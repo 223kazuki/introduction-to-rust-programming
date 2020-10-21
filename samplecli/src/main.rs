@@ -19,6 +19,49 @@ struct Opts {
     formula_file: Option<String>,
 }
 
+struct RpnCalculator(bool);
+
+impl RpnCalculator {
+    pub fn new(verbose: bool) -> Self {
+        Self(verbose)
+    }
+
+    pub fn eval(&self, formula: &str) -> i32 {
+        let mut tokens = formula.split_whitespace().rev().collect::<Vec<_>>();
+        self.eval_inner(&mut tokens)
+    }
+
+    fn eval_inner(&self, tokens: &mut Vec<&str>) -> i32 {
+        let mut stack = Vec::new();
+        while let Some(token) = tokens.pop() {
+            if let Ok(x) = token.parse::<i32>() {
+                stack.push(x);
+            } else {
+                let y = stack.pop().expect("Invalid syntax");
+                let x = stack.pop().expect("Invalid syntax");
+                let res = match token {
+                    "+" => x + y, 
+                    "-" => x - y,
+                    "*" => x * y,
+                    "/" => x / y,
+                    "%" => x % y,
+                    _ => panic!("Invalid token"),
+                };
+                stack.push(res);
+            }
+            if self.0 {
+                println!("{:?} {:?}", tokens, stack);
+            }    
+        }
+
+        if stack.len() == 1 {
+            stack[0]
+        } else {
+            panic!("Invalid token")
+        }
+    }
+}
+
 fn main() {
     let opts = Opts::parse();
     if let Some(path) = opts.formula_file {
@@ -33,8 +76,10 @@ fn main() {
 }
 
 fn run<R: BufRead>(reader: R, verbose: bool) {
+    let calc = RpnCalculator::new(verbose);
     for line in reader.lines() {
         let line = line.unwrap();
-        println!("{}", line);
+        let answer = calc.eval(&line);
+        println!("{}", answer);
     }
 }
